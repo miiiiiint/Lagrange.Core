@@ -49,7 +49,7 @@ public class BotAppInfo
         PackageName = "com.tencent.qq",
         WtLoginSdk = "nt.wtlogin.0.0.1",
         AppId = 1600001615,
-        SubAppId = 537319480,
+        SubAppId = 537319891,
         AppIdQrCode = 13697054,
         AppClientVersion = 39038,
         
