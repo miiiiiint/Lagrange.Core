@@ -14,7 +14,7 @@ jobs:
       contents: write
 
     steps:
-      - run: gh release delete nightly --cleanup-tag -y -R ${{ github.repository }}
+      - run: gh release delete nightly --cleanup-tag -y -R ${{ github.repository }} || true
 
   create-tag:
     needs:
@@ -42,6 +42,7 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
         runtimeIdentifier:
           [
