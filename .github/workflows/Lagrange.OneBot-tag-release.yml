@@ -1,10 +1,20 @@
-name: Lagrange.OneBot Tag Release
+name: Lagrange.OneBot Nightly Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
+    paths:
+      - "Lagrange.Core/**"
+      - "Lagrange.OneBot/**"
+      - "Lagrange.Core.sln"
+      - "LICENSE"
+      - "!Lagrange.OneBot/Resources/Dockerfile"
+      - "!Lagrange.OneBot/Resources/docker-entrypoint.sh"
   workflow_dispatch:
+
+env:
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   build:
@@ -34,7 +44,7 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Build Lagrange.OneBot (${{ matrix.framework }} ${{ matrix.runtimeIdentifier }})
+      - name: Build (${{ matrix.framework }} ${{ matrix.runtimeIdentifier }})
         run: dotnet publish Lagrange.OneBot/Lagrange.OneBot.csproj --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:RuntimeIdentifier=${{ matrix.runtimeIdentifier }} --framework ${{ matrix.framework }}
 
       - name: Package (Windows → zip)
@@ -70,14 +80,16 @@ jobs:
           path: ./_release
           merge-multiple: true
 
-      - name: List release assets
-        run: ls -la ./_release/
+      - name: Delete old nightly release
+        run: gh release delete nightly --cleanup-tag -y -R ${{ github.repository }} || true
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') || contains(github.ref_name, 'preview') }}
-          files: ./_release/*
+      - name: Create nightly release
+        run: |
+          echo -e "> ⚠️This is a nightly release.\r\n> ⚠️This is not the latest version.\r\n> Auto-generated from commit ${{ github.sha }}" > note
+          gh release create nightly -F ./note -p -t "Nightly Release" -R ${{ github.repository }}
+
+      - name: Upload release assets
+        run: |
+          for file in ./_release/*; do
+            gh release upload nightly "$file" -R ${{ github.repository }}
+          done
