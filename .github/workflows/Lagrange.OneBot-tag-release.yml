@@ -1,0 +1,83 @@
+name: Lagrange.OneBot Tag Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runtimeIdentifier:
+          [
+            win-x64,
+            win-x86,
+            linux-x64,
+            linux-arm,
+            linux-arm64,
+            osx-x64,
+            osx-arm64
+          ]
+        framework:
+          [net8.0, net9.0]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build Lagrange.OneBot (${{ matrix.framework }} ${{ matrix.runtimeIdentifier }})
+        run: dotnet publish Lagrange.OneBot/Lagrange.OneBot.csproj --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:RuntimeIdentifier=${{ matrix.runtimeIdentifier }} --framework ${{ matrix.framework }}
+
+      - name: Package (Windows → zip)
+        if: contains(matrix.runtimeIdentifier, 'win')
+        run: |
+          mkdir -p _pkg
+          zip -r _pkg/Lagrange.OneBot_${{ matrix.runtimeIdentifier }}_${{ matrix.framework }}_SelfContained.zip ./Lagrange.OneBot/bin/Release/${{ matrix.framework }}/${{ matrix.runtimeIdentifier }}/publish
+
+      - name: Package (Linux/macOS → tar.gz)
+        if: "!contains(matrix.runtimeIdentifier, 'win')"
+        run: |
+          mkdir -p _pkg
+          tar -czvf _pkg/Lagrange.OneBot_${{ matrix.runtimeIdentifier }}_${{ matrix.framework }}_SelfContained.tar.gz ./Lagrange.OneBot/bin/Release/${{ matrix.framework }}/${{ matrix.runtimeIdentifier }}/publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lagrange.OneBot_${{ matrix.runtimeIdentifier }}_${{ matrix.framework }}_SelfContained
+          path: _pkg/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./_release
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -la ./_release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') || contains(github.ref_name, 'preview') }}
+          files: ./_release/*
