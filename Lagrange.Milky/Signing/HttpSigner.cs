@@ -45,19 +45,24 @@ public sealed class HttpSigner : BotSignProvider, IDisposable
 
     public override async Task<SsoSecureInfo?> GetSecSign(long uin, string cmd, int seq, ReadOnlyMemory<byte> body)
     {
+        var payload = new SecSignRequest
+        {
+            Uin = uin == 0 ? _uin : uin,
+            Command = cmd,
+            Sequence = seq,
+            Body = Convert.ToHexString(body.Span).ToLower(),
+            Guid = Convert.ToHexString(Context.Keystore.Guid).ToLower(),
+            Qua = Context.AppInfo.Qua,
+        };
+        var payloadJson = Serializer.JsonSerialize(payload);
+        var requestUri = new Uri(_http.BaseAddress!, "sign/sec-sign");
+        Context.LogDebug(nameof(HttpSigner), "Sign server request: POST {0} body: {1}", requestUri, payloadJson);
+
         using var request = new HttpRequestMessage();
         request.Method = HttpMethod.Post;
         request.RequestUri = new Uri("sign/sec-sign", UriKind.Relative);
         request.Content = new StringContent(
-            Serializer.JsonSerialize(new SecSignRequest
-            {
-                Uin = uin == 0 ? _uin : uin,
-                Command = cmd,
-                Sequence = seq,
-                Body = Convert.ToHexString(body.Span).ToLower(),
-                Guid = Convert.ToHexString(Context.Keystore.Guid).ToLower(),
-                Qua = Context.AppInfo.Qua,
-            }),
+            payloadJson,
             System.Text.Encoding.UTF8,
             MediaTypeNames.Application.Json
         );
