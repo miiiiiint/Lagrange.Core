@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Lagrange.Core.Common;
@@ -56,7 +57,6 @@ public sealed class HttpSigner : BotSignProvider, IDisposable
         };
         var payloadJson = Serializer.JsonSerialize(payload);
         var requestUri = new Uri(_http.BaseAddress!, "sign/sec-sign");
-        Context.LogDebug(nameof(HttpSigner), "Sign server request: POST {0} body: {1}", requestUri, payloadJson);
 
         using var request = new HttpRequestMessage();
         request.Method = HttpMethod.Post;
@@ -66,6 +66,12 @@ public sealed class HttpSigner : BotSignProvider, IDisposable
             System.Text.Encoding.UTF8,
             MediaTypeNames.Application.Json
         );
+
+        var headers = new StringBuilder();
+        AppendHeaders(headers, _http.DefaultRequestHeaders);
+        AppendHeaders(headers, request.Headers);
+        AppendHeaders(headers, request.Content.Headers);
+        Context.LogDebug(nameof(HttpSigner), "Sign server request: POST {0} headers: {1} body: {2}", requestUri, headers, payloadJson);
 
         using var response = await _http.SendAsync(request);
         response.EnsureSuccessStatusCode();
@@ -81,6 +87,14 @@ public sealed class HttpSigner : BotSignProvider, IDisposable
             SecToken = Convert.FromHexString(result.Value.SecToken),
             SecExtra = Convert.FromHexString(result.Value.SecExtra),
         };
+    }
+
+    private static void AppendHeaders(StringBuilder builder, HttpHeaders headers)
+    {
+        foreach (var header in headers)
+        {
+            builder.Append(header.Key).Append(": ").AppendJoin(", ", header.Value).AppendLine();
+        }
     }
 
     public void Dispose()
