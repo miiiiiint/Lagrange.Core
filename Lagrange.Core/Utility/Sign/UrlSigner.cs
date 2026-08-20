@@ -23,7 +23,7 @@ internal class UrlSigner : SignProvider
         e = null;
         t = null;
 
-        if (!WhiteListCommand.Contains(cmd)) return null;
+        if (!IsWhiteListCommand(cmd)) return null;
         if (_signServer == null) throw new Exception("Sign server is not configured");
 
         using var request = new HttpRequestMessage
