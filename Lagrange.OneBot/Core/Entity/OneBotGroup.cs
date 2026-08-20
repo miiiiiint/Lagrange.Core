@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using Lagrange.Core.Common.Entity;
-using Lagrange.OneBot.Utility;
 
 namespace Lagrange.OneBot.Core.Entity;
 
@@ -14,6 +13,4 @@ public class OneBotGroup(BotGroup group)
     [JsonPropertyName("member_count")] public uint MemberCount { get; set; } = group.MemberCount;
 
     [JsonPropertyName("max_member_count")] public uint MaxMemberCount { get; set; } = group.MaxMember;
-
-    [JsonPropertyName("create_time")] public uint CreateTime { get; set; } = group.CreateTime.ToTimestamp();
 }
